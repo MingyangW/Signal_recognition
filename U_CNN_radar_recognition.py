@@ -6,14 +6,16 @@ Created on Wed Oct 31 16:26:40 2018
 """
 
 import os
-#import keras
+import argparse
 import numpy as np
 import pandas as pd
-from keras.layers import Input, Dense, Conv1D, pooling, Concatenate, Flatten
 from keras.optimizers import SGD
 from keras.models import Model
+from keras.layers import Input, Dense, Conv1D, pooling, Concatenate, Flatten
 
-#global dir_dict2
+global class2index, index2class
+class2index, index2class = {}, {}
+
 #将标签转换成独热编码格式
 def make_one_hot(data, n):
     return (np.arange(n)==data[:,None]).astype(np.integer)
@@ -31,7 +33,7 @@ def encode_data(data, binmin, binmax, binnum):
             output[-1] = 1
     return output
 
-#计算PRI
+#通过TOA计算PRI
 def compute_diff(toa, n):
     toa_a = toa[n:]
     toa_b = toa[:(toa.shape[0]-n)]
@@ -40,11 +42,12 @@ def compute_diff(toa, n):
 
 #加载数据
 def load_data(path):
-    RF_data, PRI_data, PW_data, label = [], [], [], []
-    files_name = os.listdir(path)
     global dir_dict2
     dir_dict = {}
     dir_dict2 = {}
+    RF_data, PRI_data, PW_data, label = [], [], [], []
+    files_name = os.listdir(path)
+
     for file_name in files_name:
         num = file_name.split("_")
         if num[0] not in dir_dict:
@@ -140,3 +143,16 @@ RF_data, PRI_data, PW_data, label = load_data(PATH)
 print(RF_data.shape, PRI_data.shape, PW_data.shape, label.shape)
 #ucnn_model(RF_data, PRI_data, PW_data, label, model_type='train')
 ucnn_model(RF_data, PRI_data, PW_data, label, model_type='test')
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-function', type=str, choices=['train', 'test'], default='test')
+    parser.add_argument('-data_num', type=int, default=25)
+    parser.add_argument('-n_classes', type=int, default=8)
+    
+    opt = parser.parse_args()
+    path = 'E:\\data\\signal_recognition\\{}_{}.txt'.format(opt.function, str(opt.data_num))
+    RF_data, PRI_data, PW_data, label = load_data(path)
+
+if __name__ == '__main__':
+    main()
