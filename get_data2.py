@@ -94,7 +94,7 @@ def get_data(order, radar_class, rf_type, rf, pw_type, pw, pri_type, pri, \
     pri_d = pri_d.reshape(-1,1)
     data = np.concatenate([rf_d, pw_d, pri_d], axis=1)
     df = pd.DataFrame(data, columns=["rf", "pw", "pri"])
-    path = "E:\\data\\PRI\\1101\\test_20\\{}_{}.txt".format(radar_class, order)
+    path = "E:\\data\\PRI\\1106\\train_80\\{}_{}.txt".format(radar_class, order)
     df.to_csv(path, sep="\t", index=False)
 
 def scope_list(minv, maxv, step=1):
@@ -115,7 +115,7 @@ pw3 = [500, 600]
 pw4 = scope_list(150, 1501, step=50)
 pw5 = [600, 1000]
 pw6 = [100, 500, 800]
-pw7 = [150, 300, 700]
+pw7 = [150, 300, 750]
 pw8 = [100, 200, 600]
 
 pri1, stagger1 = scope_list(125000, 2500001, 1000), [0.02, 0.04, 0.08]
@@ -127,21 +127,21 @@ pri6, jitter6 = [200000, 300000, 400000], 0.05
 pri7, jitter7 = [220000, 330000, 450000], 0.10
 pri8, jitter8 = [200000, 300000, 500000], 0.07
 
-
-for i in range(160):
-    if i < 20:
+N = 80
+for i in range(N):
+    if i < N/8:
         get_data(i, 1, 1, rf1, 2, pw1, 3, pri1, stagger=stagger1)
-    elif 20<= i <40:
+    elif N/8<= i <N/8*2:
         get_data(i, 2, 1, rf2, 1, pw2, 2, pri2, jitter=jitter2)
-    elif 40<= i<60:
+    elif N/8*2<= i<N/8*3:
         get_data(i, 3, 1, rf3, 1, pw3, 1, pri3)
-    elif 60<= i<80:
+    elif N/8*3<= i<N/8*4:
         get_data(i, 4, 2, rf4, 2, pw4, 3, pri4, stagger=stagger4)
-    elif 80<= i<100:
+    elif N/8*4<= i<N/8*5:
         get_data(i, 5, 2, rf5, 1, pw5, 1, pri5)
-    elif 100<= i<120:
+    elif N/8*5<= i<N/8*6:
         get_data(i, 6, 1, rf6, 1, pw6, 2, pri6, jitter=jitter6)
-    elif 120<= i<140:
+    elif N/8*6<= i<N/8*7:
         get_data(i, 7, 1, rf7, 1, pw7, 2, pri7, jitter=jitter7)
     else :
         get_data(i, 8, 1, rf8, 1, pw8, 2, pri8, jitter=jitter8)
@@ -151,5 +151,5 @@ for i in range(160):
             data_para, columns=["序号","型号","RF类型","RF1","RF2","RF3","RF4","PW类型",\
                                 "PW1","PW2","PW3","PW4","PRI类型","PRI1","PRI2",\
                                 "PRI3","PRI4"])
-    df.to_csv("E:\\data\\PRI\\1101\\test_20.txt", sep="\t", index=False)    
+    df.to_csv("E:\\data\\PRI\\1106\\train_80.txt", sep="\t", index=False)    
     

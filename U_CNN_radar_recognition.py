@@ -134,9 +134,9 @@ def ucnn_model(RF_data, PRI_data, PW_data, label=None, model_type='test'):
         print("Don't have this type!")
 
 global dir_dict2
-PATH = "E:\\data\\PRI\\1031\\train"
-#PATH = "E:\\data\\PRI\\1101\\test_20"
+#PATH = "E:\\data\\PRI\\1031\\train"
+PATH = "E:\\data\\PRI\\1105\\test_200"
 RF_data, PRI_data, PW_data, label = load_data(PATH)
 print(RF_data.shape, PRI_data.shape, PW_data.shape, label.shape)
-ucnn_model(RF_data, PRI_data, PW_data, label, model_type='train')
-#ucnn_model(RF_data, PRI_data, PW_data, label, model_type='test')
+#ucnn_model(RF_data, PRI_data, PW_data, label, model_type='train')
+ucnn_model(RF_data, PRI_data, PW_data, label, model_type='test')
