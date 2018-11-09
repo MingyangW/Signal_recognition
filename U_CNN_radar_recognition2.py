@@ -14,8 +14,6 @@ from keras.optimizers import SGD
 from keras.models import Model
 from keras.layers import Input, Dense, Conv1D, pooling, Concatenate, Flatten
 
-global class2index, index2class
-class2index, index2class = {}, {}
 
 # --将标签转换成独热编码格式
 def make_one_hot(data, n):
@@ -150,7 +148,7 @@ def main():
     parser.add_argument('-data_path', type=str, required=True)
     parser.add_argument('-n_classes', type=int, default=8)
     parser.add_argument('-train_data_num', type=int, default=100)
-    parser.add_argument('-test_data_num', type=int, default=25)
+    #parser.add_argument('-test_data_num', type=int, default=25)
     parser.add_argument('-epochs', type=int, default=20)
     parser.add_argument('-batch_size', type=int, default=20)
     parser.add_argument('-save_predict', action='store_true', default=True)

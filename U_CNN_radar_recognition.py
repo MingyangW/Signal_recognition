@@ -6,7 +6,6 @@ Created on Wed Oct 31 16:26:40 2018
 """
 
 import os
-import argparse
 import numpy as np
 import pandas as pd
 from keras.optimizers import SGD
@@ -111,13 +110,13 @@ def ucnn_model(RF_data, PRI_data, PW_data, label=None, model_type='test'):
     model = Model(inputs=[RF_input, PRI_input, PW_input], outputs=output)
     #print(model.summary()) 
     if model_type == 'train':
-        model.load_weights('E:\\model_save\\UCNN_weights_1101_100.h5', by_name=True)#, by_name=True
+        model.load_weights('E:\\model_save\\UCNN_weight\\UCNN_weights_1101_100.h5', by_name=True)#, by_name=True
         sgd = SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
         model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
         model.fit({"RF_input":RF_data, "PRI_input":PRI_data, "PW_input":PW_data}, label, batch_size=20, epochs=20)
-        model.save_weights('E:\\model_save\\UCNN_weights_1101_100.h5') 
+        model.save_weights('E:\\model_save\\UCNN_weight\\UCNN_weights_1101_100.h5') 
     elif model_type == 'test':
-        model.load_weights('E:\\model_save\\UCNN_weights_1101_100.h5')
+        model.load_weights('E:\\model_save\\UCNN_weight\\UCNN_weights_1101_100.h5')
         prediction = model.predict({"RF_input":RF_data, "PRI_input":PRI_data, "PW_input":PW_data})
         #print(prediction)
         lable_num = np.argmax(prediction, axis=1)
@@ -137,22 +136,15 @@ def ucnn_model(RF_data, PRI_data, PW_data, label=None, model_type='test'):
         print("Don't have this type!")
 
 global dir_dict2
-#PATH = "E:\\data\\PRI\\1031\\train"
-PATH = "E:\\data\\PRI\\1105\\test_200"
-RF_data, PRI_data, PW_data, label = load_data(PATH)
-print(RF_data.shape, PRI_data.shape, PW_data.shape, label.shape)
-#ucnn_model(RF_data, PRI_data, PW_data, label, model_type='train')
-ucnn_model(RF_data, PRI_data, PW_data, label, model_type='test')
+
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-function', type=str, choices=['train', 'test'], default='test')
-    parser.add_argument('-data_num', type=int, default=25)
-    parser.add_argument('-n_classes', type=int, default=8)
-    
-    opt = parser.parse_args()
-    path = 'E:\\data\\signal_recognition\\{}_{}.txt'.format(opt.function, str(opt.data_num))
-    RF_data, PRI_data, PW_data, label = load_data(path)
+    #PATH = "E:\\data\\PRI\\1031\\train"
+    PATH = "E:\\data\\PRI\\1105\\test_200"
+    RF_data, PRI_data, PW_data, label = load_data(PATH)
+    print(RF_data.shape, PRI_data.shape, PW_data.shape, label.shape)
+    #ucnn_model(RF_data, PRI_data, PW_data, label, model_type='train')
+    ucnn_model(RF_data, PRI_data, PW_data, label, model_type='test')
 
 if __name__ == '__main__':
     main()
