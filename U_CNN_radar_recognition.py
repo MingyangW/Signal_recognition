@@ -1,25 +1,25 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Oct 31 16:26:40 2018
+Created on Thu Nov  8 11:37:17 2018
 
 @author: mingyang.wang
 """
 
+
 import os
+import argparse
 import numpy as np
 import pandas as pd
 from keras.optimizers import SGD
 from keras.models import Model
 from keras.layers import Input, Dense, Conv1D, pooling, Concatenate, Flatten
 
-global class2index, index2class
-class2index, index2class = {}, {}
 
-#将标签转换成独热编码格式
+# --将标签转换成独热编码格式
 def make_one_hot(data, n):
     return (np.arange(n)==data[:,None]).astype(np.integer)
 
-#将将样本特征进行编码
+# --将将样本特征进行编码
 def encode_data(data, binmin, binmax, binnum):
     b = (binmax - binmin) / binnum
     output = [0 for i in range(binnum)]
@@ -32,46 +32,42 @@ def encode_data(data, binmin, binmax, binnum):
             output[-1] = 1
     return output
 
-#通过TOA计算PRI
+# --通过TOA计算PRI
 def compute_diff(toa, n):
     toa_a = toa[n:]
     toa_b = toa[:(toa.shape[0]-n)]
     return toa_a - toa_b
         
 
-#加载数据
-def load_data(path):
-    global dir_dict2
-    dir_dict = {}
-    dir_dict2 = {}
+# --加载数据
+def load_data(class2index, opt):
     RF_data, PRI_data, PW_data, label = [], [], [], []
-    files_name = os.listdir(path)
-
-    for file_name in files_name:
-        num = file_name.split("_")
-        if num[0] not in dir_dict:
-            dir_dict[num[0]] = int(num[0])-1
-            dir_dict2[int(num[0])-1] = num[0]
-        file_path = os.path.join("%s\\%s" % (path, file_name))
-        pdw_data = pd.read_csv(file_path, header=None, skiprows=[0], sep='\t')
-        pdw_data = pdw_data.values 
-        RF = encode_data(pdw_data[:, 0], 0, 10000, 7000)
-        #diff = compute_diff(pdw_data[:,], 1)
-        PRI = encode_data(pdw_data[:, 2], 0, 2000000, 6000)
-        PW = encode_data(pdw_data[:,1], 0, 100000, 8000)
-        RF_data.append(RF)
-        PRI_data.append(PRI)
-        PW_data.append(PW)
-        label.append(dir_dict[num[0]])
-    RF_data = np.array(RF_data).reshape(len(RF_data), 7000, 1)
-    PRI_data = np.array(PRI_data).reshape(len(PRI_data), 6000, 1)
-    PW_data = np.array(PW_data).reshape(len(PW_data), 8000, 1)
-    label = np.array(label)
-    label = make_one_hot(label, len(dir_dict))
-    return RF_data, PRI_data, PW_data, label
+    try:
+        files_name = os.listdir(opt.data_path) if os.path.exists(opt.data_path) else print('File is not exist!')
+        for file_name in files_name:
+            file_path = os.path.join("%s\\%s" % (opt.data_path, file_name))
+            pdw_data = pd.read_csv(file_path, header=None, skiprows=[0], sep='\t')
+            pdw_data = pdw_data.values 
+            RF_data.append(encode_data(pdw_data[:, 0], 0, 10000, 7000))
+            PRI_data.append(encode_data(pdw_data[:, 2], 0, 2000000, 6000))
+            PW_data.append(encode_data(pdw_data[:,1], 0, 100000, 8000))
+            if opt.function != 'predict':
+                num = file_name.split("_")
+                label.append(class2index[num[0]]) if num[0] in class2index else print('NO this class!')
+            else:
+                label.append(file_name[:-4])
+        RF_data = np.array(RF_data).reshape(len(RF_data), 7000, 1)
+        PRI_data = np.array(PRI_data).reshape(len(PRI_data), 6000, 1)
+        PW_data = np.array(PW_data).reshape(len(PW_data), 8000, 1)
+        if opt.function != 'predict':
+            label = make_one_hot(np.array(label), len(class2index))
+        return RF_data, PRI_data, PW_data, label
+    except:
+        print('Load_data error!')
 
 #U_CNN模型
-def ucnn_model(RF_data, PRI_data, PW_data, label=None, model_type='test'):
+def ucnn_model(RF_data, PRI_data, PW_data, label, class2index, opt ):
+    
     RF_input = Input(shape=(7000, 1), name="RF_input")
     PRI_input = Input(shape=(6000, 1), name="PRI_input")
     PW_input = Input(shape=(8000, 1), name="PW_input")
@@ -101,50 +97,69 @@ def ucnn_model(RF_data, PRI_data, PW_data, label=None, model_type='test'):
     z = Flatten()(z)
 
     xyz = Concatenate(axis=1)([x, y, z])
-    #xyz = Dense(1024, activation="relu", name='dense_0')(xyz)
     xyz = Dense(512, activation="relu", name='dense_1')(xyz)
     xyz = Dense(256, activation="relu", name='dense_2')(xyz)
     xyz = Dense(128, activation="relu", name='dense_3')(xyz)
-    output = Dense(8, activation="softmax", name='dense_4')(xyz)
+    output = Dense(opt.n_classes, activation="softmax", name='dense_4')(xyz)
 
     model = Model(inputs=[RF_input, PRI_input, PW_input], outputs=output)
-    #print(model.summary()) 
-    if model_type == 'train':
-        model.load_weights('E:\\model_save\\UCNN_weight\\UCNN_weights_1101_100.h5', by_name=True)#, by_name=True
-        sgd = SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
+
+    path = 'E:\\model_save\\Signal_recognition\\UCNN_weights_{}_{}.h5'.format(opt.n_classes, str(opt.train_data_num))
+    if opt.function == 'train':
+        if os.path.exists(path):
+            model.load_weights(path, by_name=True)
+        sgd = SGD(lr=opt.lr, decay=1e-6, momentum=0.9, nesterov=True)
         model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
-        model.fit({"RF_input":RF_data, "PRI_input":PRI_data, "PW_input":PW_data}, label, batch_size=20, epochs=20)
-        model.save_weights('E:\\model_save\\UCNN_weight\\UCNN_weights_1101_100.h5') 
-    elif model_type == 'test':
-        model.load_weights('E:\\model_save\\UCNN_weight\\UCNN_weights_1101_100.h5')
-        prediction = model.predict({"RF_input":RF_data, "PRI_input":PRI_data, "PW_input":PW_data})
-        #print(prediction)
-        lable_num = np.argmax(prediction, axis=1)
-        #print(np.argmax(prediction, axis=1))
-        label_true = np.argmax(label, axis=1)
-        acc_num = 0
-        global dir_dict2
-        for i in range(len(lable_num)):
-            if label_true[i] == lable_num[i]:
-                acc_num += 1
-            else:
-                print(label_true[i], "——>", lable_num[i])
-            
-            #print(dir_dict2[lable_num[i]])
-        print(acc_num/len(label_true))
+        model.fit({"RF_input":RF_data, "PRI_input":PRI_data, "PW_input":PW_data},\
+                  label, batch_size=opt.batch_size, epochs=opt.epochs)
+        model.save_weights(path) 
     else:
-        print("Don't have this type!")
-
-global dir_dict2
-
+        if os.path.exists(path):
+            model.load_weights(path)
+            prediction = model.predict({"RF_input":RF_data, "PRI_input":PRI_data, "PW_input":PW_data})
+            label_num = np.argmax(prediction, axis=1)
+            
+            if opt.function == 'test':
+                acc_num = 0
+                label_true = np.argmax(label, axis=1)
+                for i in range(len(label_num)):
+                    if label_true[i] == label_num[i]:
+                        acc_num += 1
+                    else:
+                        print(label_true[i], "——>", label_num[i])
+                print(acc_num/len(label_true))
+            else:
+                print(label_num)
+                if opt.save_predict:
+                    label = np.array(label).reshape(-1, 1)  
+                    index2class = {item[1]:item[0] for item in class2index.items()}
+                    predict_class = list(map(lambda x:index2class[x], label_num))
+                    predict_class = np.array(predict_class).reshape(-1, 1)
+                    predict = np.concatenate((label, predict_class), axis=1)
+                    df = pd.DataFrame(predict, columns=['file_name', 'class'])
+                    df.to_csv('E:\\data\\signal_recognition\\predict\\predict.txt', sep='\t', index=False)
+        else:
+            print('No model!')
+        
 
 def main():
-    #PATH = "E:\\data\\PRI\\1031\\train"
-    PATH = "E:\\data\\PRI\\1105\\test_200"
-    RF_data, PRI_data, PW_data, label = load_data(PATH)
-    print(RF_data.shape, PRI_data.shape, PW_data.shape, label.shape)
-    #ucnn_model(RF_data, PRI_data, PW_data, label, model_type='train')
-    ucnn_model(RF_data, PRI_data, PW_data, label, model_type='test')
+    path = 'E:\\data\\signal_recognition\\test_25'
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-function', type=str, choices=['train', 'test', 'predict'], default='test')
+    parser.add_argument('-data_path', type=str,  default=path)#required=True,
+    parser.add_argument('-n_classes', type=int, default=8) #--分类数量
+    parser.add_argument('-train_data_num', type=int, default=100) #--训练样本数量
+    #parser.add_argument('-test_data_num', type=int, default=25)
+    parser.add_argument('-epochs', type=int, default=20)
+    parser.add_argument('-batch_size', type=int, default=20)
+    parser.add_argument('-lr', type=float, default=0.001)
+    parser.add_argument('-save_predict', action='store_true', default=True) #--将预测结果保存文件
+
+    class2index = {'1':0, '2':1, '3':2, '4':3, '5':4, '6':5, '7':6, '8':7}
+    
+    opt = parser.parse_args()
+    RF_data, PRI_data, PW_data, label = load_data(class2index, opt)
+    ucnn_model(RF_data, PRI_data, PW_data, label, class2index, opt)
 
 if __name__ == '__main__':
     main()
